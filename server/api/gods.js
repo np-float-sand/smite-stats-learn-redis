@@ -3,11 +3,30 @@ const { GodPlayerStats, God, GodInfo } = require('../../db');
 const godStats = require('../util/godStats');
 const defaultStats = Object.keys(require('../util/defaultPlayerGodStats'));
 
+const redis = require('redis')
+const client = redis.createClient();
+const {promisify} = require('util')
+const getAsync = promisify(client.get).bind(client)
+const setAsync = promisify(client.set).bind(client)
+
+
 router.get('/', async (req, res, next) => {
     try {
-        let gods = await God.findAll().map(god => god.name);
+        let gods;
+         try{
+          gods = await getAsync ( 'godKey')
+         console.log('used cache', typeof gods)
+     }catch(e1){
+         gods = await God.findAll().map(god => god.name);
+        let cacheresp = await setAsync('godKey', gods) // send to cache
+        console.log('used db', typeof gods)
+
+        console.log(cacheresp)
+        
+       }
         res.send(gods);
     } catch(err){
+        console.log('some error happened')
         next(err);
     }
 })
